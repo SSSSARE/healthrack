@@ -1,1 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthTrack — Контроль здоровья</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1f2833; --card: #1a2232;
+    --border: rgba(99,202,183,0.15); --accent: #63cab7; --accent2: #4fa8d5;
+    --accent3: #f06292; --accent4: #ffb74d; --text: #e8f0fe; --text2: #8b9ab8;
+    --text3: #c5cfe8; --green: #56cf8a; --red: #f06292; --yellow: #ffb74d;
+    --radius: 16px; --shadow: 0 4px 32px rgba(0,0,0,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
 
+  /* ── AUTH MODAL ── */
+  #auth-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #auth-overlay.hidden { display: none; }
+  .auth-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 24px; padding: 2.5rem; width: 100%; max-width: 420px;
+    box-shadow: var(--shadow);
+  }
+  .auth-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; color: var(--accent); text-align: center; margin-bottom: 4px; }
+  .auth-logo span { color: var(--text); }
+  .auth-sub { text-align: center; color: var(--text2); font-size: 0.875rem; margin-bottom: 2rem; }
+  .auth-tabs { display: flex; background: var(--bg3); border-radius: 12px; padding: 4px; margin-bottom: 1.75rem; gap: 4px; }
+  .auth-tab {
+    flex: 1; padding: 9px; border: none; border-radius: 9px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 600;
+    background: none; color: var(--text2); transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--accent); color: var(--bg); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  .auth-field { margin-bottom: 1rem; }
+  .auth-field label { display: block; font-size: 0.75rem; color: var(--text2); margin-bottom: 6px; font-weight: 500; letter-spacing: 0.5px; }
+  .auth-field input {
+    width: 100%; background: var(--bg3); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 11px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+  }
+  .auth-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,202,183,0.1); }
+  .auth-btn {
+    width: 100%; background: var(--accent); color: var(--bg); border: none;
+    border-radius: 10px; padding: 12px; font-family: 'DM Sans', sans-serif;
+    font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
+  }
+  .auth-btn:hover { background: #7ad6c5; }
+  .auth-error {
+    background: rgba(240,98,146,0.1); border: 1px solid rgba(240,98,146,0.3);
+    color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 0.85rem;
+    margin-bottom: 1rem; display: none;
+  }
+  .auth-error.show { display: block; }
+
+  /* ── LOADING ── */
+  #app-loading {
+    position: fixed; inset: 0; z-index: 500; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  }
+  #app-loading.hidden { display: none; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px);
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--text); }
+  nav { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; color: var(--text2); padding: 8px 16px; border-radius: 10px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
+    transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  nav button:hover { background: var(--bg3); color: var(--text); }
+  nav button.active { background: rgba(99,202,183,0.12); color: var(--accent); }
+  nav button .icon { font-size: 1rem; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-badge {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+    background: var(--bg3); border-radius: 10px; font-size: 0.8rem; color: var(--text2);
+  }
+  .user-badge strong { color: var(--text); }
+  .btn-logout {
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    padding: 6px 12px; border-radius: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem; transition: all 0.2s;
+  }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 20px; font-size: 0.875rem; color: var(--text);
+    box-shadow: var(--shadow); transform: translateY(80px); opacity: 0;
+    transition: all 0.3s cubic-bezier(.34,1.56,.64,1); pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.toast-err { border-color: rgba(240,98,146,0.4); color: var(--red); }
+
+  /* ── MAIN LAYOUT ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .section { display: none; animation: fadeIn 0.3s ease; }
+  .section.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── DASHBOARD ── */
+  .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.5rem; position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--card-accent, var(--accent)); border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .stat-card .label { color: var(--text2); font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.5rem; }
+  .stat-card .value { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 700; line-height: 1; }
+  .stat-card .unit { font-size: 0.875rem; color: var(--text2); margin-left: 4px; }
+  .stat-card .sub { font-size: 0.75rem; color: var(--text2); margin-top: 0.5rem; }
+  .stat-card .icon-bg { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-size: 2.5rem; opacity: 0.07; }
+  .stat-weight { --card-accent: var(--accent); }
+  .stat-bp { --card-accent: var(--accent3); }
+  .stat-food { --card-accent: var(--accent4); }
+  .stat-steps { --card-accent: var(--green); }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+  .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-color, var(--accent)); box-shadow: 0 0 8px var(--dot-color, var(--accent)); }
+
+  .form-row { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
+  .form-row.cols2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+  label { display: block; font-size: 0.75rem; color: var(--text2); margin-bottom: 4px; font-weight: 500; letter-spacing: 0.5px; }
+  input, select, textarea { width: 100%; background: var(--bg3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; transition: border-color 0.2s; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,202,183,0.1); }
+  input[type="range"] { background: none; border: none; padding: 4px 0; cursor: pointer; }
+  select option { background: var(--bg2); }
+
+  .btn { background: var(--accent); color: var(--bg); border: none; border-radius: 10px; padding: 10px 20px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: #7ad6c5; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn.btn-danger { background: var(--accent3); }
+  .btn.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  .btn.btn-secondary:hover { background: var(--bg2); }
+  .btn.btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 10px 12px; color: var(--text2); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text3); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+  .badge-green { background: rgba(86,207,138,0.15); color: var(--green); }
+  .badge-red { background: rgba(240,98,146,0.15); color: var(--red); }
+  .badge-yellow { background: rgba(255,183,77,0.15); color: var(--yellow); }
+  .badge-blue { background: rgba(79,168,213,0.15); color: var(--accent2); }
+
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 { font-family: 'Syne', sans-serif; font-size: 1.75rem; font-weight: 800; margin-bottom: 4px; }
+  .page-header p { color: var(--text2); font-size: 0.9rem; }
+
+  .bmi-meter { position: relative; margin: 1rem 0; }
+  .bmi-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--accent2), var(--green), var(--yellow), var(--red)); }
+  .bmi-pointer { position: absolute; top: -4px; width: 16px; height: 16px; background: white; border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(255,255,255,0.5); transform: translateX(-50%); transition: left 0.5s cubic-bezier(.34,1.56,.64,1); }
+  .bmi-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.65rem; color: var(--text2); }
+
+  .mini-chart { height: 80px; position: relative; display: flex; align-items: flex-end; gap: 4px; }
+  .mini-bar { flex: 1; border-radius: 4px 4px 0 0; transition: height 0.4s cubic-bezier(.34,1.56,.64,1); opacity: 0.8; cursor: pointer; position: relative; }
+  .mini-bar:hover { opacity: 1; }
+  .mini-bar .tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.7rem; white-space: nowrap; margin-bottom: 4px; z-index: 10; }
+  .mini-bar:hover .tooltip { display: block; }
+
+  .line-chart { height: 100px; }
+  .progress-ring { display: flex; align-items: center; gap: 1.5rem; margin-top: 0.75rem; }
+  .ring-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; }
+
+  .water-track { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.75rem; }
+  .water-glass { width: 32px; height: 40px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.2s; display: flex; align-items: flex-end; overflow: hidden; }
+  .water-glass.filled { border-color: var(--accent2); }
+  .water-glass .fill { width: 100%; background: var(--accent2); transition: height 0.3s; opacity: 0.8; }
+
+  .alert { padding: 12px 16px; border-radius: 10px; font-size: 0.875rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; }
+  .alert-warn { background: rgba(255,183,77,0.1); border: 1px solid rgba(255,183,77,0.3); color: var(--yellow); }
+  .alert-good { background: rgba(86,207,138,0.1); border: 1px solid rgba(86,207,138,0.3); color: var(--green); }
+  .alert-info { background: rgba(99,202,183,0.1); border: 1px solid rgba(99,202,183,0.3); color: var(--accent); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+  .macro-bar-wrap { margin: 0.75rem 0; }
+  .macro-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; }
+  .macro-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .macro-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+  .scroll-list { max-height: 260px; overflow-y: auto; }
+  .scroll-list::-webkit-scrollbar { width: 4px; }
+  .scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .food-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .food-item:last-child { border-bottom: none; }
+  .food-name { font-size: 0.875rem; color: var(--text3); }
+  .food-kcal { font-size: 0.75rem; color: var(--accent4); font-weight: 600; }
+  .food-del { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 0.875rem; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }
+  .food-del:hover { color: var(--red); background: rgba(240,98,146,0.1); }
+
+  .activity-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .activity-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(86,207,138,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .activity-info { flex: 1; }
+  .activity-name { font-size: 0.875rem; color: var(--text3); }
+  .activity-meta { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+  .activity-kcal { font-size: 0.875rem; color: var(--green); font-weight: 600; }
+
+  .steps-big { text-align: center; padding: 1.5rem 0; }
+  .steps-big .num { font-family: 'Syne', sans-serif; font-size: 3.5rem; font-weight: 800; color: var(--green); line-height: 1; }
+  .steps-big .goal { font-size: 0.875rem; color: var(--text2); margin-top: 4px; }
+  .steps-track { height: 12px; background: var(--bg3); border-radius: 6px; overflow: hidden; margin: 1rem 0; }
+  .steps-fill { height: 100%; border-radius: 6px; background: linear-gradient(to right, var(--green), var(--accent)); transition: width 0.8s cubic-bezier(.34,1.56,.64,1); }
+
+  .bp-display { display: flex; align-items: baseline; gap: 8px; margin: 0.75rem 0; }
+  .bp-num { font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 700; }
+  .bp-slash { font-size: 1.5rem; color: var(--text2); }
+  .bp-status { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+  .pulse-icon { display: inline-block; animation: pulse-beat 1.2s ease infinite; color: var(--red); font-size: 1.5rem; }
+  @keyframes pulse-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+
+  .svg-chart { width: 100%; overflow: hidden; border-radius: 8px; }
+  .empty { text-align: center; padding: 2rem; color: var(--text2); font-size: 0.875rem; }
+  .empty .icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+  @media (max-width: 768px) {
+    nav button span { display: none; }
+    .dashboard-grid { grid-template-columns: 1fr 1fr; }
+    .charts-row, .two-col, .three-col { grid-template-columns: 1fr; }
+    main { padding: 1rem; }
+    .header-right .user-badge { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH OVERLAY ── -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">Health<span>Track</span></div>
+    <div class="auth-sub">Ваш личный дневник здоровья</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Войти</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Регистрация</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- LOGIN -->
+    <div id="form-login" class="auth-form active">
+      <div class="auth-field"><label>Логин или Email</label><input id="l-login" type="text" placeholder="user@mail.ru" autocomplete="username"></div>
+      <div class="auth-field"><label>Пароль</label><input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-btn" onclick="doLogin()">Войти в аккаунт</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-register" class="auth-form">
+      <div class="auth-field"><label>Имя (необязательно)</label><input id="r-name" type="text" placeholder="Иван Иванов"></div>
+      <div class="auth-field"><label>Логин *</label><input id="r-username" type="text" placeholder="ivan123" autocomplete="username"></div>
+      <div class="auth-field"><label>Email *</label><input id="r-email" type="email" placeholder="ivan@mail.ru" autocomplete="email"></div>
+      <div class="auth-field"><label>Пароль * (мин. 6 символов)</label><input id="r-pass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+      <button class="auth-btn" onclick="doRegister()">Создать аккаунт</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP LOADING ── -->
+<div id="app-loading" class="hidden">
+  <div class="spinner"></div>
+  <span style="color:var(--text2);font-size:0.875rem">Загрузка данных…</span>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">Health<span>Track</span></div>
+  <nav>
+    <button class="active" onclick="showSection('dashboard')"><span class="icon">🏠</span> <span>Главная</span></button>
+    <button onclick="showSection('weight')"><span class="icon">⚖️</span> <span>Вес / ИМТ</span></button>
+    <button onclick="showSection('food')"><span class="icon">🥗</span> <span>Питание</span></button>
+    <button onclick="showSection('bp')"><span class="icon">❤️</span> <span>Давление</span></button>
+    <button onclick="showSection('activity')"><span class="icon">🏃</span> <span>Активность</span></button>
+  </nav>
+  <div class="header-right">
+    <div class="user-badge">👤 <strong id="user-display-name">—</strong></div>
+    <button class="btn-logout" onclick="doLogout()">Выйти</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ====== DASHBOARD ====== -->
+<div class="section active" id="section-dashboard">
+  <div class="page-header">
+    <h1>Панель управления</h1>
+    <p id="dash-date">Сегодня загружается…</p>
+  </div>
+  <div class="dashboard-grid">
+    <div class="stat-card stat-weight">
+      <div class="label">Текущий вес</div>
+      <div class="value" id="dash-weight">—<span class="unit">кг</span></div>
+      <div class="sub" id="dash-bmi-short">ИМТ: —</div>
+      <div class="icon-bg">⚖️</div>
+    </div>
+    <div class="stat-card stat-bp">
+      <div class="label">Давление / Пульс</div>
+      <div class="value" id="dash-bp">—<span class="unit">мм рт.ст.</span></div>
+      <div class="sub" id="dash-pulse">Пульс: —</div>
+      <div class="icon-bg">❤️</div>
+    </div>
+    <div class="stat-card stat-food">
+      <div class="label">Калории сегодня</div>
+      <div class="value" id="dash-kcal">0<span class="unit">ккал</span></div>
+      <div class="sub" id="dash-kcal-sub">цель: 2000 ккал</div>
+      <div class="icon-bg">🥗</div>
+    </div>
+    <div class="stat-card stat-steps">
+      <div class="label">Шаги сегодня</div>
+      <div class="value" id="dash-steps">0<span class="unit">шаг</span></div>
+      <div class="sub" id="dash-steps-sub">цель: 10 000</div>
+      <div class="icon-bg">🏃</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--accent)"></div>Динамика веса (7 дней)</div>
+      <canvas id="weight-chart" height="100"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--accent3)"></div>Давление (7 дней)</div>
+      <canvas id="bp-chart" height="100"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--accent4)"></div>Питание сегодня</div>
+      <div class="progress-ring">
+        <div class="ring-wrap">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg3)" stroke-width="8"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--accent4)" stroke-width="8"
+              stroke-dasharray="201" id="food-ring" stroke-dashoffset="201" stroke-linecap="round"/>
+          </svg>
+          <div class="ring-val" id="food-ring-val">0%</div>
+        </div>
+        <div>
+          <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">Макронутриенты</div>
+          <div class="macro-bar-wrap">
+            <div class="macro-label"><span>Белки</span><span id="p-val">0г</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="p-bar" style="width:0%;background:var(--accent2)"></div></div>
+          </div>
+          <div class="macro-bar-wrap">
+            <div class="macro-label"><span>Жиры</span><span id="f-val">0г</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="f-bar" style="width:0%;background:var(--accent4)"></div></div>
+          </div>
+          <div class="macro-bar-wrap">
+            <div class="macro-label"><span>Углеводы</span><span id="c-val">0г</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="c-bar" style="width:0%;background:var(--green)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--green)"></div>Активность сегодня</div>
+      <div class="steps-big">
+        <div class="num" id="dash-steps-big">0</div>
+        <div class="goal">из <span id="dash-steps-goal">10 000</span> шагов</div>
+      </div>
+      <div class="steps-track"><div class="steps-fill" id="steps-fill" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2)">
+        <span id="steps-pct">0% цели</span>
+        <span id="steps-kcal-burn">Сожжено: 0 ккал</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== WEIGHT ====== -->
+<div class="section" id="section-weight">
+  <div class="page-header">
+    <h1>⚖️ Вес и ИМТ</h1>
+    <p>Отслеживайте свой вес и индекс массы тела</p>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot"></div>Добавить измерение</div>
+        <div class="form-row cols2">
+          <div><label>Дата</label><input type="date" id="w-date"></div>
+          <div><label>Вес (кг)</label><input type="number" id="w-weight" placeholder="70.5" step="0.1" min="20" max="300"></div>
+        </div>
+        <div class="form-row cols2">
+          <div><label>Рост (см)</label><input type="number" id="w-height" placeholder="175" min="100" max="250"></div>
+          <div><label>Заметка</label><input type="text" id="w-note" placeholder="После завтрака…"></div>
+        </div>
+        <button class="btn" onclick="addWeight()">+ Добавить</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="dot"></div>ИМТ сейчас</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:0.75rem">
+          <span style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:800" id="bmi-val">—</span>
+          <span id="bmi-label" class="badge badge-blue">Нет данных</span>
+        </div>
+        <div class="bmi-meter">
+          <div class="bmi-bar"></div>
+          <div class="bmi-pointer" id="bmi-pointer" style="left:0%"></div>
+        </div>
+        <div class="bmi-labels">
+          <span>Дефицит<br>(&lt;18.5)</span>
+          <span>Норма<br>(18.5–25)</span>
+          <span>Избыток<br>(25–30)</span>
+          <span>Ожирение<br>(&gt;30)</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>История измерений</div>
+      <div class="table-wrap scroll-list">
+        <table>
+          <thead><tr><th>Дата</th><th>Вес</th><th>ИМТ</th><th>Δ</th><th></th></tr></thead>
+          <tbody id="weight-table"><tr><td colspan="5"><div class="empty"><div class="icon">⚖️</div>Нет записей</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FOOD ====== -->
+<div class="section" id="section-food">
+  <div class="page-header">
+    <h1>🥗 Дневник питания</h1>
+    <p>Контролируйте калории и макронутриенты</p>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--accent4)"></div>Добавить приём пищи</div>
+        <div class="form-row">
+          <div><label>Продукт / блюдо</label><input type="text" id="f-name" placeholder="Гречневая каша с молоком"></div>
+        </div>
+        <div class="form-row cols2">
+          <div><label>Калории (ккал)</label><input type="number" id="f-kcal" placeholder="250" min="0"></div>
+          <div><label>Приём пищи</label>
+            <select id="f-meal"><option>Завтрак</option><option>Обед</option><option>Ужин</option><option>Перекус</option></select>
+          </div>
+        </div>
+        <div class="form-row cols3">
+          <div><label>Белки (г)</label><input type="number" id="f-p" placeholder="12" min="0" step="0.1"></div>
+          <div><label>Жиры (г)</label><input type="number" id="f-fat" placeholder="5" min="0" step="0.1"></div>
+          <div><label>Углеводы (г)</label><input type="number" id="f-c" placeholder="40" min="0" step="0.1"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="addFood()">+ Добавить</button>
+          <span style="font-size:0.75rem;color:var(--text2)">Суточная цель:
+            <input type="number" id="f-goal" value="2000" style="width:70px;display:inline-block;padding:4px 8px;font-size:0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="updateFoodGoal()"> ккал
+          </span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--accent4)"></div>Итоги дня</div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem">
+          <div><div style="font-size:0.7rem;color:var(--text2)">Калории</div><div style="font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:700;color:var(--accent4)" id="total-kcal">0</div><div style="font-size:0.7rem;color:var(--text2)">/ <span id="total-goal-show">2000</span> ккал</div></div>
+          <div><div style="font-size:0.7rem;color:var(--text2)">Белки</div><div style="font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:700;color:var(--accent2)" id="total-p">0г</div></div>
+          <div><div style="font-size:0.7rem;color:var(--text2)">Жиры</div><div style="font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:700;color:var(--accent4)" id="total-f">0г</div></div>
+          <div><div style="font-size:0.7rem;color:var(--text2)">Углеводы</div><div style="font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:700;color:var(--green)" id="total-c">0г</div></div>
+        </div>
+        <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden">
+          <div id="kcal-progress" style="height:100%;background:var(--accent4);border-radius:4px;transition:width 0.5s;width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.7rem;color:var(--text2)">
+          <span>0</span><span id="kcal-pct">0%</span><span id="kcal-goal-label">2000 ккал</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--accent4)"></div>Список за сегодня</div>
+      <div style="display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="btn btn-sm btn-secondary" onclick="filterMeal('all')" id="meal-all">Все</button>
+        <button class="btn btn-sm btn-secondary" onclick="filterMeal('Завтрак')" id="meal-b">Завтрак</button>
+        <button class="btn btn-sm btn-secondary" onclick="filterMeal('Обед')" id="meal-l">Обед</button>
+        <button class="btn btn-sm btn-secondary" onclick="filterMeal('Ужин')" id="meal-d">Ужин</button>
+        <button class="btn btn-sm btn-secondary" onclick="filterMeal('Перекус')" id="meal-s">Перекус</button>
+      </div>
+      <div class="scroll-list" id="food-list">
+        <div class="empty"><div class="icon">🍽️</div>Добавьте первый приём пищи</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== BLOOD PRESSURE ====== -->
+<div class="section" id="section-bp">
+  <div class="page-header">
+    <h1>❤️ Давление и пульс</h1>
+    <p>Мониторинг артериального давления и пульса</p>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--accent3)"></div>Добавить измерение</div>
+        <div class="form-row cols2">
+          <div><label>Дата и время</label><input type="datetime-local" id="bp-date"></div>
+          <div><label>Рука</label><select id="bp-arm"><option>Левая</option><option>Правая</option></select></div>
+        </div>
+        <div class="form-row cols3">
+          <div><label>Систолическое</label><input type="number" id="bp-sys" placeholder="120" min="50" max="250"></div>
+          <div><label>Диастолическое</label><input type="number" id="bp-dia" placeholder="80" min="30" max="150"></div>
+          <div><label>Пульс (уд/мин)</label><input type="number" id="bp-pulse" placeholder="72" min="30" max="250"></div>
+        </div>
+        <div class="form-row"><div><label>Состояние / условия</label><input type="text" id="bp-note" placeholder="После отдыха, стресс…"></div></div>
+        <button class="btn" style="background:var(--accent3)" onclick="addBP()">+ Добавить</button>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--accent3)"></div>Последнее измерение</div>
+        <div id="bp-last"><div class="empty"><div class="icon">❤️</div>Нет данных</div></div>
+        <div style="margin-top:1rem">
+          <div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px;font-weight:600">КЛАССИФИКАЦИЯ АД (ВОЗ):</div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:0.75rem">
+            <div style="display:flex;gap:8px;align-items:center"><span class="badge badge-blue">Оптимальное</span><span style="color:var(--text2)">&lt; 120/80</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><span class="badge badge-green">Нормальное</span><span style="color:var(--text2)">120–129 / 80–84</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><span class="badge badge-yellow">Высокое норм.</span><span style="color:var(--text2)">130–139 / 85–89</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><span class="badge badge-red">Гипертония</span><span style="color:var(--text2)">&gt;= 140/90</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot" style="--dot-color:var(--accent3)"></div>История измерений</div>
+      <div class="table-wrap scroll-list" style="max-height:400px">
+        <table>
+          <thead><tr><th>Дата/время</th><th>Давление</th><th>Пульс</th><th>Статус</th><th>Рука</th><th></th></tr></thead>
+          <tbody id="bp-table"><tr><td colspan="6"><div class="empty"><div class="icon">❤️</div>Нет записей</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ACTIVITY ====== -->
+<div class="section" id="section-activity">
+  <div class="page-header">
+    <h1>🏃 Физическая активность</h1>
+    <p>Шаги, тренировки и расход калорий</p>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--green)"></div>Шаги сегодня</div>
+        <div class="form-row cols2">
+          <div><label>Количество шагов</label><input type="number" id="a-steps" placeholder="8500" min="0" max="100000"></div>
+          <div><label>Суточная цель</label><input type="number" id="a-goal" value="10000" min="1000" onchange="updateGoal()"></div>
+        </div>
+        <button class="btn" style="background:var(--green);color:var(--bg)" onclick="saveSteps()">Сохранить шаги</button>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--green)"></div>Добавить тренировку</div>
+        <div class="form-row cols2">
+          <div><label>Вид активности</label>
+            <select id="act-type">
+              <option>🚶 Ходьба</option><option>🏃 Бег</option><option>🚴 Велосипед</option>
+              <option>🏊 Плавание</option><option>💪 Силовая</option><option>🧘 Йога</option>
+              <option>⚽ Спорт</option><option>🤸 Растяжка</option><option>Другое</option>
+            </select>
+          </div>
+          <div><label>Длительность (мин)</label><input type="number" id="act-dur" placeholder="45" min="1"></div>
+        </div>
+        <div class="form-row cols2">
+          <div><label>Ккал сожжено</label><input type="number" id="act-kcal" placeholder="300" min="0"></div>
+          <div><label>Дата</label><input type="date" id="act-date"></div>
+        </div>
+        <button class="btn" style="background:var(--green);color:var(--bg)" onclick="addActivity()">+ Добавить</button>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--green)"></div>Прогресс шагов</div>
+        <div class="steps-big">
+          <div class="num" id="act-steps-big">0</div>
+          <div class="goal">из <span id="act-goal-show">10 000</span> шагов</div>
+        </div>
+        <div class="steps-track"><div class="steps-fill" id="act-steps-fill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2)">
+          <span id="act-pct">0%</span><span id="act-kcal-est">~0 ккал</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="dot" style="--dot-color:var(--green)"></div>Тренировки</div>
+        <div class="scroll-list" id="activity-list" style="max-height:220px">
+          <div class="empty"><div class="icon">🏃</div>Нет записей тренировок</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ============================================================
+//  HealthTrack Frontend — API-powered
+// ============================================================
+
+const API = '';   // same origin; set to 'http://localhost:3000' if separate
+
+// ── State ────────────────────────────────────────────────────
+const STATE = {
+  weights: [], foods: [], bp: [], activities: [],
+  steps: 0, stepsGoal: 10000, height: 170, foodGoal: 2000,
+  water: 0
+};
+let TOKEN = localStorage.getItem('ht_token') || null;
+
+// ── API helpers ──────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(API + path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Ошибка сервера');
+  return data;
+}
+
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (err ? ' toast-err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+// ── Auth overlay ─────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'login')));
+  document.getElementById('form-login').classList.toggle('active', tab === 'login');
+  document.getElementById('form-register').classList.toggle('active', tab === 'register');
+  document.getElementById('auth-error').classList.remove('show');
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function doLogin() {
+  const login = document.getElementById('l-login').value.trim();
+  const password = document.getElementById('l-pass').value;
+  if (!login || !password) return showAuthError('Заполните все поля');
+  try {
+    const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ login, password }) });
+    TOKEN = data.token;
+    localStorage.setItem('ht_token', TOKEN);
+    await loadAppData(data.user);
+  } catch(e) { showAuthError(e.message); }
+}
+
+async function doRegister() {
+  const name     = document.getElementById('r-name').value.trim();
+  const username = document.getElementById('r-username').value.trim();
+  const email    = document.getElementById('r-email').value.trim();
+  const password = document.getElementById('r-pass').value;
+  if (!username || !email || !password) return showAuthError('Заполните все обязательные поля');
+  try {
+    const data = await apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, username, email, password }) });
+    TOKEN = data.token;
+    localStorage.setItem('ht_token', TOKEN);
+    await loadAppData(data.user);
+  } catch(e) { showAuthError(e.message); }
+}
+
+function doLogout() {
+  TOKEN = null;
+  localStorage.removeItem('ht_token');
+  location.reload();
+}
+
+// ── Load all data ────────────────────────────────────────────
+async function loadAppData(user) {
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('app-loading').classList.remove('hidden');
+
+  try {
+    const d = await apiFetch('/api/data');
+
+    // Map server data to STATE
+    STATE.weights = d.weights.map(r => ({
+      id: r.id, date: r.date, weight: r.weight, height: r.height, note: r.note
+    }));
+
+    STATE.foods = d.foods.map(r => ({
+      id: r.id, date: r.date, name: r.name, meal: r.meal,
+      kcal: r.kcal, p: r.protein, fat: r.fat, c: r.carbs
+    }));
+
+    STATE.bp = d.bp.map(r => ({
+      id: r.id, date: r.datetime, sys: r.sys, dia: r.dia,
+      pulse: r.pulse, arm: r.arm, note: r.note
+    }));
+
+    STATE.activities = d.activities.map(r => ({
+      id: r.id, date: r.date, type: r.type, dur: r.duration, kcal: r.kcal
+    }));
+
+    const s = d.settings || {};
+    STATE.foodGoal  = s.food_goal  || 2000;
+    STATE.stepsGoal = s.steps_goal || 10000;
+    STATE.steps     = s.steps      || 0;
+    STATE.water     = s.water      || 0;
+    STATE.height    = (d.user && d.user.height) || 170;
+
+    // Display user name
+    const u = user || d.user;
+    document.getElementById('user-display-name').textContent = (u && (u.name || u.username)) || 'Пользователь';
+
+    initUI();
+  } catch(e) {
+    showToast('Ошибка загрузки: ' + e.message, true);
+  } finally {
+    document.getElementById('app-loading').classList.add('hidden');
+  }
+}
+
+function initUI() {
+  document.getElementById('w-date').value   = today();
+  document.getElementById('bp-date').value  = todayDT();
+  document.getElementById('act-date').value = today();
+  document.getElementById('f-goal').value   = STATE.foodGoal;
+  document.getElementById('a-goal').value   = STATE.stepsGoal;
+  document.getElementById('a-steps').value  = STATE.steps || '';
+
+  renderWeightTable();
+  renderBMI();
+  renderFoodList('all');
+  updateFoodDash();
+  renderBPTable();
+  renderBPLast();
+  renderActivityDash();
+  renderActivityList();
+  refreshDashboard();
+
+  window.addEventListener('resize', () => { drawWeightChart(); drawBPChart(); });
+}
+
+// ── Nav ──────────────────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('nav button')[['dashboard','weight','food','bp','activity'].indexOf(id)].classList.add('active');
+  refreshDashboard();
+}
+
+// ── Date helpers ─────────────────────────────────────────────
+function today() { return new Date().toISOString().split('T')[0]; }
+function todayDT() { return new Date().toISOString().slice(0,16); }
+function fmtDate(d) { return new Date(d).toLocaleDateString('ru-RU', { day:'2-digit', month:'short' }); }
+
+// ── WEIGHT ───────────────────────────────────────────────────
+function calcBMI(w, h) { if (!w || !h) return null; return (w / ((h/100)**2)).toFixed(1); }
+function bmiLabel(bmi) {
+  if (!bmi) return ['Нет данных','badge-blue'];
+  if (bmi < 18.5) return ['Дефицит','badge-blue'];
+  if (bmi < 25)   return ['Норма','badge-green'];
+  if (bmi < 30)   return ['Избыток','badge-yellow'];
+  return ['Ожирение','badge-red'];
+}
+
+async function addWeight() {
+  const w = parseFloat(document.getElementById('w-weight').value);
+  const h = parseFloat(document.getElementById('w-height').value) || STATE.height;
+  const d = document.getElementById('w-date').value || today();
+  const n = document.getElementById('w-note').value;
+  if (!w) return alert('Введите вес');
+  try {
+    const rec = await apiFetch('/api/weights', { method:'POST', body: JSON.stringify({ date:d, weight:w, height:h||null, note:n }) });
+    if (h) STATE.height = h;
+    STATE.weights.push({ id:rec.id, date:d, weight:w, height:h, note:n });
+    STATE.weights.sort((a,b) => a.date.localeCompare(b.date));
+    document.getElementById('w-weight').value = '';
+    document.getElementById('w-note').value = '';
+    renderWeightTable(); renderBMI(); refreshDashboard();
+    showToast('⚖️ Вес сохранён');
+  } catch(e) { showToast(e.message, true); }
+}
+
+async function removeWeight(id) {
+  try {
+    await apiFetch('/api/weights/' + id, { method:'DELETE' });
+    STATE.weights = STATE.weights.filter(r => r.id !== id);
+    renderWeightTable(); renderBMI(); refreshDashboard();
+    showToast('Запись удалена');
+  } catch(e) { showToast(e.message, true); }
+}
+
+function renderWeightTable() {
+  const tb = document.getElementById('weight-table');
+  if (!STATE.weights.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="icon">⚖️</div>Нет записей</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = [...STATE.weights].reverse().map((r, ri) => {
+    const i = STATE.weights.length - 1 - ri;
+    const bmi = calcBMI(r.weight, r.height || STATE.height);
+    const [lbl, cls] = bmiLabel(bmi);
+    const prev = i > 0 ? STATE.weights[i-1].weight : null;
+    const delta = prev ? (r.weight - prev).toFixed(1) : '—';
+    const deltaHtml = delta === '—' ? '—' : `<span style="color:${delta>0?'var(--red)':'var(--green)'}">${delta>0?'+':''}${delta}</span>`;
+    return `<tr>
+      <td>${fmtDate(r.date)}${r.note ? `<br><span style="font-size:0.7rem;color:var(--text2)">${r.note}</span>` : ''}</td>
+      <td style="font-weight:600">${r.weight} кг</td>
+      <td><span class="badge ${cls}">${bmi || '—'}</span></td>
+      <td>${deltaHtml}</td>
+      <td><button class="food-del" onclick="removeWeight(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBMI() {
+  const last = STATE.weights[STATE.weights.length - 1];
+  if (!last) return;
+  const bmi = calcBMI(last.weight, last.height || STATE.height);
+  const [lbl, cls] = bmiLabel(bmi);
+  document.getElementById('bmi-val').textContent = bmi || '—';
+  const badge = document.getElementById('bmi-label');
+  badge.className = 'badge ' + cls; badge.textContent = lbl;
+  if (bmi) {
+    const pct = Math.min(Math.max((bmi - 15) / (40 - 15) * 100, 2), 98);
+    document.getElementById('bmi-pointer').style.left = pct + '%';
+  }
+}
+
+// ── FOOD ─────────────────────────────────────────────────────
+async function addFood() {
+  const name = document.getElementById('f-name').value.trim();
+  const kcal = parseFloat(document.getElementById('f-kcal').value) || 0;
+  const meal = document.getElementById('f-meal').value;
+  const p    = parseFloat(document.getElementById('f-p').value)   || 0;
+  const fat  = parseFloat(document.getElementById('f-fat').value) || 0;
+  const c    = parseFloat(document.getElementById('f-c').value)   || 0;
+  if (!name) return alert('Введите название продукта');
+  try {
+    const rec = await apiFetch('/api/foods', { method:'POST', body: JSON.stringify({ date:today(), name, meal, kcal, protein:p, fat, carbs:c }) });
+    STATE.foods.push({ id:rec.id, date:today(), name, meal, kcal, p, fat, c });
+    ['f-name','f-kcal','f-p','f-fat','f-c'].forEach(id => document.getElementById(id).value = '');
+    renderFoodList('all'); updateFoodDash(); refreshDashboard();
+    showToast('🥗 Приём пищи добавлен');
+  } catch(e) { showToast(e.message, true); }
+}
+
+async function removeFood(id) {
+  try {
+    await apiFetch('/api/foods/' + id, { method:'DELETE' });
+    STATE.foods = STATE.foods.filter(r => r.id !== id);
+    renderFoodList(currentMealFilter); updateFoodDash(); refreshDashboard();
+  } catch(e) { showToast(e.message, true); }
+}
+
+let currentMealFilter = 'all';
+function filterMeal(m) {
+  currentMealFilter = m;
+  renderFoodList(m);
+  ['all','Завтрак','Обед','Ужин','Перекус'].forEach((v, idx) => {
+    const ids = ['all','b','l','d','s'];
+    document.getElementById('meal-' + ids[idx]).classList.toggle('active', v === m);
+  });
+}
+
+function renderFoodList(filter) {
+  const todayFoods = STATE.foods.filter(f => f.date === today());
+  const filtered   = filter === 'all' ? todayFoods : todayFoods.filter(f => f.meal === filter);
+  const el = document.getElementById('food-list');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🍽️</div>Нет записей для этого фильтра</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(f => `
+    <div class="food-item">
+      <div>
+        <div class="food-name">${f.name}</div>
+        <div style="font-size:0.7rem;color:var(--text2)">${f.meal} · Б:${f.p}г · Ж:${f.fat}г · У:${f.c}г</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="food-kcal">${f.kcal} ккал</div>
+        <button class="food-del" onclick="removeFood(${f.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function updateFoodDash() {
+  const goal = parseFloat(document.getElementById('f-goal').value) || 2000;
+  STATE.foodGoal = goal;
+  const todayFoods = STATE.foods.filter(f => f.date === today());
+  const total = todayFoods.reduce((s,f) => s+f.kcal, 0);
+  const p   = todayFoods.reduce((s,f) => s+f.p,   0);
+  const fat = todayFoods.reduce((s,f) => s+f.fat, 0);
+  const c   = todayFoods.reduce((s,f) => s+f.c,   0);
+  document.getElementById('total-kcal').textContent = total;
+  document.getElementById('total-p').textContent = p.toFixed(1) + 'г';
+  document.getElementById('total-f').textContent = fat.toFixed(1) + 'г';
+  document.getElementById('total-c').textContent = c.toFixed(1) + 'г';
+  document.getElementById('total-goal-show').textContent = goal;
+  document.getElementById('kcal-goal-label').textContent = goal + ' ккал';
+  const pct = Math.min((total/goal)*100, 100);
+  document.getElementById('kcal-progress').style.width = pct + '%';
+  document.getElementById('kcal-progress').style.background = pct > 100 ? 'var(--red)' : 'var(--accent4)';
+  document.getElementById('kcal-pct').textContent = Math.round(pct) + '%';
+}
+
+async function updateFoodGoal() {
+  const goal = parseFloat(document.getElementById('f-goal').value) || 2000;
+  STATE.foodGoal = goal;
+  updateFoodDash();
+  await saveSettings();
+}
+
+// ── BLOOD PRESSURE ───────────────────────────────────────────
+function bpStatus(sys, dia) {
+  if (sys < 120 && dia < 80) return ['Оптимальное','badge-blue'];
+  if (sys < 130 && dia < 85) return ['Нормальное','badge-green'];
+  if (sys < 140 && dia < 90) return ['Высокое норм.','badge-yellow'];
+  return ['Гипертония','badge-red'];
+}
+
+async function addBP() {
+  const sys  = parseInt(document.getElementById('bp-sys').value);
+  const dia  = parseInt(document.getElementById('bp-dia').value);
+  const pulse = parseInt(document.getElementById('bp-pulse').value) || null;
+  const dt   = document.getElementById('bp-date').value || todayDT();
+  const arm  = document.getElementById('bp-arm').value;
+  const note = document.getElementById('bp-note').value;
+  if (!sys || !dia) return alert('Введите давление');
+  try {
+    const rec = await apiFetch('/api/bp', { method:'POST', body: JSON.stringify({ datetime:dt, sys, dia, pulse, arm, note }) });
+    STATE.bp.push({ id:rec.id, date:dt, sys, dia, pulse, arm, note });
+    STATE.bp.sort((a,b) => a.date.localeCompare(b.date));
+    ['bp-sys','bp-dia','bp-pulse','bp-note'].forEach(id => document.getElementById(id).value = '');
+    renderBPTable(); renderBPLast(); refreshDashboard();
+    showToast('❤️ Измерение добавлено');
+  } catch(e) { showToast(e.message, true); }
+}
+
+async function removeBP(id) {
+  try {
+    await apiFetch('/api/bp/' + id, { method:'DELETE' });
+    STATE.bp = STATE.bp.filter(r => r.id !== id);
+    renderBPTable(); renderBPLast(); refreshDashboard();
+  } catch(e) { showToast(e.message, true); }
+}
+
+function renderBPTable() {
+  const tb = document.getElementById('bp-table');
+  if (!STATE.bp.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="icon">❤️</div>Нет записей</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = [...STATE.bp].reverse().map(r => {
+    const [lbl, cls] = bpStatus(r.sys, r.dia);
+    return `<tr>
+      <td>${new Date(r.date).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+        ${r.note ? `<br><span style="font-size:0.7rem;color:var(--text2)">${r.note}</span>` : ''}</td>
+      <td style="font-weight:600">${r.sys}/${r.dia}</td>
+      <td>${r.pulse ? r.pulse + ' уд/мин' : '—'}</td>
+      <td><span class="badge ${cls}">${lbl}</span></td>
+      <td>${r.arm || '—'}</td>
+      <td><button class="food-del" onclick="removeBP(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBPLast() {
+  const el = document.getElementById('bp-last');
+  const last = STATE.bp[STATE.bp.length - 1];
+  if (!last) { el.innerHTML = '<div class="empty"><div class="icon">❤️</div>Нет данных</div>'; return; }
+  const [lbl, cls] = bpStatus(last.sys, last.dia);
+  el.innerHTML = `
+    <div class="bp-display">
+      <div class="bp-num" style="color:var(--accent3)">${last.sys}</div>
+      <div class="bp-slash">/</div>
+      <div class="bp-num" style="color:var(--accent2)">${last.dia}</div>
+      <span class="badge ${cls} bp-status">${lbl}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="pulse-icon">♥</span>
+      <span style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:700">${last.pulse || '—'}</span>
+      <span style="color:var(--text2);font-size:0.8rem">уд/мин</span>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text2)">${new Date(last.date).toLocaleString('ru-RU')} · ${last.arm || ''}</div>`;
+}
+
+// ── ACTIVITY ─────────────────────────────────────────────────
+async function addActivity() {
+  const type = document.getElementById('act-type').value;
+  const dur  = parseInt(document.getElementById('act-dur').value);
+  const kcal = parseInt(document.getElementById('act-kcal').value) || null;
+  const date = document.getElementById('act-date').value || today();
+  if (!dur) return alert('Введите длительность');
+  try {
+    const rec = await apiFetch('/api/activities', { method:'POST', body: JSON.stringify({ date, type, duration:dur, kcal }) });
+    STATE.activities.push({ id:rec.id, date, type, dur, kcal });
+    ['act-dur','act-kcal'].forEach(id => document.getElementById(id).value = '');
+    renderActivityDash(); renderActivityList(); refreshDashboard();
+    showToast('🏃 Тренировка добавлена');
+  } catch(e) { showToast(e.message, true); }
+}
+
+async function removeActivity(id) {
+  try {
+    await apiFetch('/api/activities/' + id, { method:'DELETE' });
+    STATE.activities = STATE.activities.filter(r => r.id !== id);
+    renderActivityDash(); renderActivityList(); refreshDashboard();
+  } catch(e) { showToast(e.message, true); }
+}
+
+async function saveSteps() {
+  STATE.steps = parseInt(document.getElementById('a-steps').value) || 0;
+  STATE.stepsGoal = parseInt(document.getElementById('a-goal').value) || 10000;
+  await saveSettings();
+  renderActivityDash(); refreshDashboard();
+  showToast('👟 Шаги сохранены');
+}
+
+async function updateGoal() {
+  STATE.stepsGoal = parseInt(document.getElementById('a-goal').value) || 10000;
+  await saveSettings();
+  renderActivityDash();
+}
+
+async function saveSettings() {
+  try {
+    await apiFetch('/api/settings', { method:'PUT', body: JSON.stringify({
+      food_goal: STATE.foodGoal, steps_goal: STATE.stepsGoal, steps: STATE.steps, water: STATE.water
+    })});
+  } catch(e) { /* silent */ }
+}
+
+function renderActivityDash() {
+  const steps    = STATE.steps || 0;
+  const stepsGoal = STATE.stepsGoal || 10000;
+  const pct = Math.min((steps / stepsGoal) * 100, 100);
+  const kcalBurn = Math.round(steps * 0.04);
+  const today_acts = STATE.activities.filter(a => a.date === today());
+
+  // dash page
+  const el1 = document.getElementById('dash-steps-big');
+  if (el1) el1.textContent = steps.toLocaleString('ru-RU');
+  const el2 = document.getElementById('dash-steps-goal');
+  if (el2) el2.textContent = stepsGoal.toLocaleString('ru-RU');
+  const fill = document.getElementById('steps-fill');
+  if (fill) fill.style.width = pct + '%';
+  const sp = document.getElementById('steps-pct');
+  if (sp) sp.textContent = Math.round(pct) + '% цели';
+  const kb = document.getElementById('steps-kcal-burn');
+  if (kb) kb.textContent = 'Сожжено: ' + kcalBurn + ' ккал';
+
+  // activity page
+  const el3 = document.getElementById('act-steps-big');
+  if (el3) el3.textContent = steps.toLocaleString('ru-RU');
+  const el4 = document.getElementById('act-goal-show');
+  if (el4) el4.textContent = stepsGoal.toLocaleString('ru-RU');
+  const fill2 = document.getElementById('act-steps-fill');
+  if (fill2) fill2.style.width = pct + '%';
+  const ap = document.getElementById('act-pct');
+  if (ap) ap.textContent = Math.round(pct) + '%';
+  const ak = document.getElementById('act-kcal-est');
+  if (ak) ak.textContent = '~' + kcalBurn + ' ккал';
+
+  // header stat
+  const ds = document.getElementById('dash-steps');
+  if (ds) ds.innerHTML = steps.toLocaleString('ru-RU') + '<span class="unit">шаг</span>';
+  const dss = document.getElementById('dash-steps-sub');
+  if (dss) dss.textContent = 'цель: ' + stepsGoal.toLocaleString('ru-RU');
+
+  // activities list on dashboard
+  const actEl = document.getElementById('activity-list');
+  if (!actEl) return;
+  if (!today_acts.length) {
+    actEl.innerHTML = '<div class="empty"><div class="icon">🏃</div>Нет тренировок сегодня</div>';
+    return;
+  }
+  actEl.innerHTML = today_acts.map(a => `
+    <div class="activity-item">
+      <div class="activity-icon">${a.type.split(' ')[0]}</div>
+      <div class="activity-info">
+        <div class="activity-name">${a.type.replace(/^[^\s]+\s/, '')}</div>
+        <div class="activity-meta">${a.dur} мин</div>
+      </div>
+      <div class="activity-kcal">${a.kcal ? '−' + a.kcal + ' ккал' : ''}</div>
+      <button class="food-del" onclick="removeActivity(${a.id})">✕</button>
+    </div>`).join('');
+}
+
+function renderActivityList() {
+  const el = document.getElementById('activity-list');
+  if (!el) return;
+  renderActivityDash();
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function refreshDashboard() {
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('ru-RU',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const lastW = STATE.weights[STATE.weights.length - 1];
+  if (lastW) {
+    document.getElementById('dash-weight').innerHTML = lastW.weight + '<span class="unit">кг</span>';
+    const bmi = calcBMI(lastW.weight, lastW.height || STATE.height);
+    document.getElementById('dash-bmi-short').textContent = 'ИМТ: ' + (bmi || '—');
+  }
+
+  const lastBP = STATE.bp[STATE.bp.length - 1];
+  if (lastBP) {
+    document.getElementById('dash-bp').innerHTML = lastBP.sys + '/' + lastBP.dia + '<span class="unit">мм рт.ст.</span>';
+    document.getElementById('dash-pulse').textContent = lastBP.pulse ? 'Пульс: ' + lastBP.pulse + ' уд/мин' : 'Пульс: —';
+  }
+
+  const todayFoods = STATE.foods.filter(f => f.date === today());
+  const totalKcal = todayFoods.reduce((s,f) => s+f.kcal, 0);
+  const totalP    = todayFoods.reduce((s,f) => s+f.p,   0);
+  const totalFat  = todayFoods.reduce((s,f) => s+f.fat, 0);
+  const totalC    = todayFoods.reduce((s,f) => s+f.c,   0);
+  document.getElementById('dash-kcal').innerHTML = totalKcal + '<span class="unit">ккал</span>';
+  const goal = STATE.foodGoal || 2000;
+  const kcalPct = Math.min((totalKcal / goal) * 100, 100);
+  const ring = document.getElementById('food-ring');
+  ring.style.strokeDashoffset = 201 - (201 * kcalPct / 100);
+  document.getElementById('food-ring-val').textContent = Math.round(kcalPct) + '%';
+  document.getElementById('p-val').textContent = totalP.toFixed(0) + 'г';
+  document.getElementById('f-val').textContent = totalFat.toFixed(0) + 'г';
+  document.getElementById('c-val').textContent = totalC.toFixed(0) + 'г';
+  document.getElementById('p-bar').style.width = Math.min(totalP/120*100, 100) + '%';
+  document.getElementById('f-bar').style.width = Math.min(totalFat/80*100, 100) + '%';
+  document.getElementById('c-bar').style.width = Math.min(totalC/300*100, 100) + '%';
+
+  renderActivityDash();
+  drawWeightChart();
+  drawBPChart();
+}
+
+// ── CHARTS ───────────────────────────────────────────────────
+function drawWeightChart() {
+  const canvas = document.getElementById('weight-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth, H = 100;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  const data = STATE.weights.slice(-7);
+  if (data.length < 2) {
+    ctx.fillStyle = '#8b9ab8'; ctx.font = '12px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText('Недостаточно данных', W/2, H/2); return;
+  }
+  const vals = data.map(d => d.weight);
+  const min = Math.min(...vals) - 1, max = Math.max(...vals) + 1;
+  const pad = { t:10, b:20, l:35, r:10 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const x = i => pad.l + (i / (data.length-1)) * cW;
+  const y = v => pad.t + (1-(v-min)/(max-min)) * cH;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let j = 0; j <= 3; j++) {
+    const yy = pad.t + (j/3)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9ab8'; ctx.font = '9px DM Sans'; ctx.textAlign = 'right';
+    ctx.fillText((max-(j/3)*(max-min)).toFixed(1), pad.l-4, yy+3);
+  }
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+  grad.addColorStop(0, 'rgba(99,202,183,0.3)'); grad.addColorStop(1, 'rgba(99,202,183,0)');
+  ctx.beginPath(); ctx.moveTo(x(0), y(vals[0]));
+  for (let i=1; i<data.length; i++) ctx.lineTo(x(i), y(vals[i]));
+  ctx.lineTo(x(data.length-1), H-pad.b); ctx.lineTo(x(0), H-pad.b);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle = '#63cab7'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  data.forEach((d,i) => i===0 ? ctx.moveTo(x(i),y(vals[i])) : ctx.lineTo(x(i),y(vals[i])));
+  ctx.stroke();
+  data.forEach((d,i) => {
+    ctx.beginPath(); ctx.arc(x(i), y(vals[i]), 3.5, 0, Math.PI*2);
+    ctx.fillStyle = '#63cab7'; ctx.fill();
+    if (i===data.length-1 || i===0) {
+      ctx.fillStyle = '#e8f0fe'; ctx.font = 'bold 10px Syne'; ctx.textAlign = 'center';
+      ctx.fillText(vals[i], x(i), y(vals[i])-8);
+    }
+    ctx.fillStyle = '#8b9ab8'; ctx.font = '9px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText(fmtDate(d.date), x(i), H-4);
+  });
+}
+
+function drawBPChart() {
+  const canvas = document.getElementById('bp-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth, H = 100;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  const data = STATE.bp.slice(-7);
+  if (data.length < 2) {
+    ctx.fillStyle = '#8b9ab8'; ctx.font = '12px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText('Недостаточно данных', W/2, H/2); return;
+  }
+  const syss = data.map(d => d.sys), dias = data.map(d => d.dia);
+  const min = Math.min(...dias)-5, max = Math.max(...syss)+5;
+  const pad = { t:10, b:20, l:35, r:10 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const x = i => pad.l + (i/(data.length-1))*cW;
+  const y = v => pad.t + (1-(v-min)/(max-min))*cH;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let j=0; j<=3; j++) {
+    const yy = pad.t+(j/3)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W-pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9ab8'; ctx.font = '9px DM Sans'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(max-(j/3)*(max-min)), pad.l-4, yy+3);
+  }
+  ctx.beginPath(); ctx.strokeStyle = '#f06292'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  data.forEach((d,i) => i===0 ? ctx.moveTo(x(i),y(d.sys)) : ctx.lineTo(x(i),y(d.sys)));
+  ctx.stroke();
+  ctx.beginPath(); ctx.strokeStyle = '#4fa8d5'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  data.forEach((d,i) => i===0 ? ctx.moveTo(x(i),y(d.dia)) : ctx.lineTo(x(i),y(d.dia)));
+  ctx.stroke();
+  data.forEach((d,i) => {
+    ctx.beginPath(); ctx.arc(x(i),y(d.sys),3,0,Math.PI*2); ctx.fillStyle='#f06292'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x(i),y(d.dia),3,0,Math.PI*2); ctx.fillStyle='#4fa8d5'; ctx.fill();
+    ctx.fillStyle='#8b9ab8'; ctx.font='9px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(fmtDate(d.date), x(i), H-4);
+  });
+  ctx.fillStyle='#f06292'; ctx.font='bold 9px DM Sans';
+  ctx.fillText('● Сис.', W-pad.r-55, pad.t+4);
+  ctx.fillStyle='#4fa8d5';
+  ctx.fillText('● Диас.', W-pad.r-20, pad.t+4);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  if (TOKEN) {
+    // Try to restore session
+    document.getElementById('auth-overlay').classList.add('hidden');
+    await loadAppData(null);
+  }
+  // else auth overlay stays visible
+}
+
+// Handle Enter in auth fields
+document.getElementById('l-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('r-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+
+init();
+</script>
+</body>
+</html>
